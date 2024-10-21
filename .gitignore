@@ -1,0 +1,5 @@
+/data_complex/*
+/data_simple/*
+!/data_complex/.gitignore
+!/data_simple/.gitignore
+\.ipynb_checkpoints
