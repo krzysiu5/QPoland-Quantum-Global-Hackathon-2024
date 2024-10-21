@@ -3,3 +3,4 @@
 !/data_complex/.gitignore
 !/data_simple/.gitignore
 \.ipynb_checkpoints
+**.pyc
