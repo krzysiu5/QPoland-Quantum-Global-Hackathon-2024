@@ -80,7 +80,8 @@ class Flight:
 
         aircraft_data = self.data.aircraft[self.data.aircraft['registration'] == self.aircraft]
         failures = dict()
-        ranks = []
+        
+        ranks_needed = self.rank_requirement.loc[aircraft_data['family'].values[0]].to_dict()
 
         self.crew = crew_list
         for crew_member in self.crew:
@@ -101,8 +102,13 @@ class Flight:
             if crew_member_data['specs'] != aircraft_data['family']:
                 failures['crew_member_has_invalid_qualifications_for_aircraft'] = [crew_member, crew_member_data['specs'], aircraft_data['family']]
 
-            ranks.append(crew_member_data['rank'])
-        
+            if crew_member in ranks_needed.keys():
+                ranks_needed[crew_member] -= 1
+                print(ranks_needed[crew_member])
+                if min(ranks_needed.values()) < 0:
+                    failures['exceed_crew_members_for_given_flight'] = [crew_member, crew_member['specs'], aircraft_data['family']]
+            if max(ranks_needed.values()) > 0:
+                failures['not_enough_crew_members_for_given_flight'] = [crew_member, crew_member['specs'], aircraft_data['family']]
         
         if len(failures) == 0:
             return tuple(True, None)
@@ -110,7 +116,7 @@ class Flight:
             return tuple(False, failures)
 
 
-        #TODO : check if number of crew members is appropriate 
+        #TODO : check if these restrictions are enough
     
     def reset_aircraft(self):
         self.aircraft = None
@@ -125,6 +131,7 @@ class Scheduler:
         self._create_transport_orders()
         self.initial_plan = None
         self.current_time = None # All flights starting before this time are fixed
+        self.rank_requirement = pd.read_csv('crew_for_family.csv', sep=";", index_col=0)
         self.pairings = [] #
     
     def _create_transport_orders(self):
