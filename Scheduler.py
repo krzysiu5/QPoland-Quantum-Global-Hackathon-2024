@@ -3,6 +3,12 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+def odczytaj_czas(str):
+    data, czas = str.split('T')
+    rok, miesiac, dzien = data.split('-')
+    godzina, minuta = czas.split(':')
+    return datetime.datetime(int(rok), int(miesiac), int(dzien), int(godzina), int(minuta))
+
 class Flight:
     def __init__(self, full_data : loading.Data, passenger_count):
         self.data = full_data
@@ -30,12 +36,42 @@ class Flight:
         self.start = start
         self.end = end
     
-    def try_assign_aircraf(self, aircraft):
+    def try_assign_aircraft(self, aircraft):
         """assigns aircraft, if it's possible it, and then it will return tuple (true, None).
         If it's not possible it returns false, with data about failure
         """
         self.aircraft = aircraft
-        # TODO: check if possible is it possible to assign a given aircraft
+        unavilib = self.data.aircraft_unavailabilities
+        unavilib = unavilib[unavilib["Registration"] == self.aircraft]
+
+        niepowodzenia = dict()
+
+        for i in range(len(unavilib)):
+            start_dostep = odczytaj_czas(unavilib.loc[i,"start"]) 
+            finish_dostep = odczytaj_czas(unavilib.loc[i,"finish"])
+
+            if odczytaj_czas(self.start_time) <= start_dostep <= odczytaj_czas(self.end_time):
+                niepowodzenia["start_time_of_unavilib_within_flight_time"] = [odczytaj_czas(self.start_time), start_dostep, odczytaj_czas(self.end_time)]
+            if odczytaj_czas(self.start_time) <= finish_dostep <= odczytaj_czas(self.end_time):
+                niepowodzenia["finish_time_of_unavilib_within_flight_time"] = [odczytaj_czas(self.start_time), finish_dostep, odczytaj_czas(self.end_time)]
+        
+        restricts = self.data.aircraft_restrictions
+        if self.aircraft in restricts[restricts["airport"] == self.end]["disallowed_model"].values:
+            niepowodzenia["aircraft_is_banned_at_target_airport"] = [self.aircraft, self.end]
+
+        our_capacity = data.cabin_capacities[data.cabin_capacities["aircraft"] == self.aircraft]
+        our_capacity_sum = our_capacity.loc[0,"cap_first"] + our_capacity.loc[0,"cap_business"] + our_capacity.loc[0,"cap_economic"]
+
+        if our_capacity_sum == -3:
+            return tuple(True, None)
+        
+        if self.passenger_count > our_capacity_sum:
+            niepowodzenia["aircraft_does_not_have_enough_sitting_places"] = [self.aircraft, self.passenger_count, our_capacity_sum]
+        
+        if len(niepowodzenia) == 0:
+            return tuple(True, None)
+        else:
+            return tuple(False, niepowodzenia)
     
     def try_assign_crew(self, crew_list):
         """assigns crew, if it's possible, and then it returns (true, None).
