@@ -18,6 +18,7 @@ class Flight:
         self.end_time = None
         self.duration = None
         self.passenger_count = passenger_count
+        self.rank_requirement = pd.read_csv('crew_for_family.csv', sep=";", index_col=0)
         self.crew = []
     
     def set_time(self, start_time, end_time):
@@ -41,19 +42,19 @@ class Flight:
         If it's not possible it returns false, with data about failure
         """
         self.aircraft = aircraft
-        unavilib = self.data.aircraft_unavailabilities
-        unavilib = unavilib[unavilib["Registration"] == self.aircraft]
+        unavailab = self.data.aircraft_unavailabilities
+        unavailab = unavailab[unavailab["registration"] == self.aircraft]
 
         failures = dict()
 
-        for i in range(len(unavilib)):
-            start_unavilib = read_time(unavilib.loc[i,"start"]) 
-            finish_unavilib = read_time(unavilib.loc[i,"finish"])
+        for i in range(len(unavailab)):
+            start_unavailab = read_time(unavailab.loc[i,"start"]) 
+            finish_unavailab = read_time(unavailab.loc[i,"finish"])
 
-            if read_time(self.start_time) <= start_unavilib <= read_time(self.end_time):
-                failures["start_time_of_unavilib_within_flight_time"] = [read_time(self.start_time), start_unavilib, read_time(self.end_time)]
-            if read_time(self.start_time) <= finish_unavilib <= read_time(self.end_time):
-                failures["finish_time_of_unavilib_within_flight_time"] = [read_time(self.start_time), finish_unavilib, read_time(self.end_time)]
+            if read_time(self.start_time) <= start_unavailab <= read_time(self.end_time):
+                failures["start_time_of_unavailab_within_flight_time"] = [read_time(self.start_time), start_unavailab, read_time(self.end_time)]
+            if read_time(self.start_time) <= finish_unavailab <= read_time(self.end_time):
+                failures["finish_time_of_unavailab_within_flight_time"] = [read_time(self.start_time), finish_unavailab, read_time(self.end_time)]
         
         restricts = self.data.aircraft_restrictions
         if self.aircraft in restricts[restricts["airport"] == self.end]["disallowed_model"].values:
@@ -77,8 +78,46 @@ class Flight:
         """assigns crew, if it's possible, and then it returns (true, None).
         If it's not possible it returns false, with data about failure
         """
+
+        aircraft_data = self.data.aircraft[self.data.aircraft['registration'] == self.aircraft]
+        failures = dict()
+        
+        ranks_needed = self.rank_requirement.loc[aircraft_data['family'].values[0]].to_dict()
+
         self.crew = crew_list
-        #TODO : check if crew has qualifications 
+        for crew_member in self.crew:
+            unavailab = self.data.crew_unavailabilities
+            unavailab = unavailab[unavailab["crew_id"] == crew_member]
+
+            for i in range(len(unavailab)):
+                start_unavailab = read_time(unavailab.loc[i,"start"]) 
+                finish_unavailab = read_time(unavailab.loc[i,"finish"])
+
+                if read_time(self.start_time) <= start_unavailab <= read_time(self.end_time):
+                    failures["start_time_of_unavailab_within_flight_time"] = [read_time(self.start_time), start_unavailab, read_time(self.end_time)]
+                if read_time(self.start_time) <= finish_unavailab <= read_time(self.end_time):
+                    failures["finish_time_of_unavailab_within_flight_time"] = [read_time(self.start_time), finish_unavailab, read_time(self.end_time)]
+            
+            crew_member_data = self.data.crew[self.data.crew['crew_id'] == crew_member]
+            
+            if crew_member_data['specs'] != aircraft_data['family']:
+                failures['crew_member_has_invalid_qualifications_for_aircraft'] = [crew_member, crew_member_data['specs'], aircraft_data['family']]
+
+            if crew_member in ranks_needed.keys():
+                ranks_needed[crew_member] -= 1
+                print(ranks_needed[crew_member])
+                if min(ranks_needed.values()) < 0:
+                    failures['exceed_crew_members_for_given_flight'] = [crew_member, crew_member['specs'], aircraft_data['family']]
+            if max(ranks_needed.values()) > 0:
+                failures['not_enough_crew_members_for_given_flight'] = [crew_member, crew_member['specs'], aircraft_data['family']]
+        
+        if len(failures) == 0:
+            return tuple(True, None)
+        else:
+            return tuple(False, failures)
+
+
+        #TODO : check if these restrictions are enough
     
     def reset_aircraft(self):
         self.aircraft = None
