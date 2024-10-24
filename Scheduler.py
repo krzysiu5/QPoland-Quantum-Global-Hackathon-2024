@@ -157,6 +157,63 @@ class Scheduler:
         pass
 
 
+class Schedule:
+    def __init__(self, scheduler):
+        self.scheduler = scheduler
+        self.flight_lists = []
+        self.time_slots = []
+        self.children_of_flights = [] #this is a list which length is the same as the list of flight_lists
+        #and for each flight in flight_lists, value in this list in corresponding position is list of indexes of flights
+        #which are the children of specified flight
+        self.slots_of_each_flight = []
+        self.resources_availible = [] #each element of this list is the list of resources avaible at the t-th time slot of each kind
+        self.resources_required = [] #each element of this list is the list of resources required at the t-th time slot to carry job at this slot
+
+        #vector 0-1, i.e x[i,t] = 1 if i-th job is started in the t-th time slot, else 0
+        #moreover, we assume that each job cannot occupy more than 1 time slot
+        self.x = np.array()
+        for i in range(len(self.flight_lists)):
+            for t in range(len(self.time_slots)):
+                if read_time(self.time_slots[t][0]) == read_time(self.flight_lists[i].start_time) & \
+                      read_time(self.time_slots[t][1]) == read_time(self.flight_lists[i].end_time):
+                    self.x[i,t] = 1
+                else:
+                    self.x[i,t] = 0
+
+    def aj_started_only_once(self):
+        summarised_col = [sum([self.x[job,slot] for job in self.flight_lists]) for slot in self.time_slots]
+        return summarised_col == [1]*len(self.flight_lists)
+    
+    def aj_started_in_order(self):
+        #in this function we assume that aj_started_only_once returned True !!!!!!
+
+        #finding corresponding time_slot for each flight firstly
+        for i in range(len(self.flight_lists)):
+            self.slots_of_each_flight[i] = np.where(self.x[i] == 1)[0]
+
+        for i in range(len(self.flight_lists)):
+            if len(self.children_of_flights[i]) != 0:
+                for child in self.children_of_flights[i]:
+                     if not abs(self.x[i,self.slots_of_each_flight[i]] * self.x[child,self.slots_of_each_flight[child]]) < 10**(-15):
+                         return False
+        return True
+
+    def aj_enough_resources(self):
+        #in this function we assume that aj_started_only_once returned True and also aj_started_in_order did so !!!!!!!
+        failures = [] #for each t-th time slot, value of this list at t-th position is tuple (t-th time_slot, resources_required, resources_avaible)
+
+        for i in range(len(self.flight_lists)):
+            for t in range(len(self.resources_availible)):
+                if not self.x[i,self.slots_of_each_flight[i]] * self.resources_required[t] <= self.resources_availible[t]:
+                    failures[t] = tuple(self.time_slots[t], self.resources_required[t],\
+                                                      self.resources_availible[t])
+                    
+        if len(failures) == 0:
+            return True
+        else:
+            return False, failures        
+                
+
 if __name__ == "__main__":
     import datetime
     data = loading.Data("data_complex")
