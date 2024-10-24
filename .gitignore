@@ -3,5 +3,5 @@
 !/data_complex/.gitignore
 !/data_simple/.gitignore
 \.ipynb_checkpoints
-exploration Marcin Massalski.ipynb
 **.pyc
+exploration Marcin Massalski.ipynb
