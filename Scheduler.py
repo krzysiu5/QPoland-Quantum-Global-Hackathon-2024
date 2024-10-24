@@ -18,6 +18,7 @@ class Flight:
         self.end_time = None
         self.duration = None
         self.passenger_count = passenger_count
+        self.rank_requirement = pd.read_csv('crew_for_family.csv', sep=";", index_col=0)
         self.crew = []
     
     def set_time(self, start_time, end_time):
@@ -131,7 +132,6 @@ class Scheduler:
         self._create_transport_orders()
         self.initial_plan = None
         self.current_time = None # All flights starting before this time are fixed
-        self.rank_requirement = pd.read_csv('crew_for_family.csv', sep=";", index_col=0)
         self.pairings = [] #
     
     def _create_transport_orders(self):
