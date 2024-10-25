@@ -15,6 +15,7 @@ distances = np.array([[1,2,1],[2,1,1],[1,1,1]])
 distances
 
 passenger_destinations = np.array([0,1,2])
+passenger_start = np.array([1,2,0])
 
 P = []
 for t in time_range:
@@ -43,6 +44,7 @@ L.shape
 ###!!!! Można przypisać wartości, które moją być ustalone bezpośrednio !!!
 for r in passenger_range:
     L[r, time_range[-1], passenger_destinations[r], 0] = 1
+    L[r, time_range[0], passenger_start[r], 0] = 1
 
 only_one_state = np.sum((np.sum(P, axis=1) - 1)**2)
 
@@ -51,7 +53,7 @@ for t1 in time_range:
     for t2 in time_range:
         for i in airport_range:
             for j in airport_range:
-                if abs(t1-t2)<distances[i-1,j-1]:
+                if i!=j and abs(t1-t2)<distances[i-1,j-1]:
                     _to_sum.append(P[t1,i,:]*P[t2,j,:])
 cond_P1 = np.sum(_to_sum)
 
@@ -106,7 +108,7 @@ cond4 = np.sum(_to_sum)
 
 _to_sum = []
 for t in time_range[:-1]:
-    _to_sum.append(np.sum(L[:, t, n+1, :] * L[:, t+1, 0, :]))
+    _to_sum.append(np.sum(-L[:, t, n+1, :] * L[:, t+1, 0, :]))
 cond5 = np.sum(_to_sum)
 
 _to_sum = []
@@ -115,7 +117,7 @@ for r in passenger_range:
     for t in time_range[:-1]:
         for u in plane_range:
             for k in plane_range:
-                _to_sum.append(np.sum(L[r, t, _x, u] * L[r, t+1, _x, k]))
+                _to_sum.append(np.sum(-L[r, t, _x, u] * L[r, t+1, _x, k]))
 cond6 = 2*np.sum(_to_sum)
 
 conditions_on_LP = only_one_place + cond1 + cond2 + \
@@ -126,7 +128,7 @@ model = H.compile()
 bqm = model.to_bqm()
 import neal
 sa = neal.SimulatedAnnealingSampler()
-sampleset = sa.sample(bqm, num_reads=10)
+sampleset = sa.sample(bqm, num_reads=100)
 decoded_samples = model.decode_sampleset(sampleset)
 best_sample = min(decoded_samples, key=lambda x: x.energy)
 #print(best_sample.sample)
