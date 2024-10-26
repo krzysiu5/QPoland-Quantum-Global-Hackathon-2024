@@ -34,18 +34,18 @@ class QuantumPlanner:
     def set_conditions(self, P, L):
         #At the start the only possition of the passenger is at start airport (isn't at the others)
         for r in self.passenger_range:
-            for i in self.airport_range:
+            for i in self.airport_range + [0, self.n+1]:
                 if i != self.passenger_start[r]:
                     L[r, self.time_range[0], i, :] = 0
 
         #At the start the only possition of the airplane is at start airport
         for p in self.plane_range[:-1]:
-            for i in self.airport_range:
+            for i in self.airport_range + [0,self.n+1]:
                 P[self.time_range[0], i, p] = (self.airplane_start[p] == i)
         
         #At the end the only available possition of the passenger is in airport
         for r in self.passenger_range: 
-            for i in self.airport_range:
+            for i in self.airport_range + [0, self.n+1]:
                 for p in self.plane_range:
                     if i != self.passenger_destinations[r]:
                         L[r, self.time_range[-1], i, p] = 0
@@ -54,6 +54,8 @@ class QuantumPlanner:
         for t in self.time_range:
             for i in self.airport_range:
                 P[t, i, self.plane_range[-1]] = 1
+            for i in [0, self.n+1]: # the plane is never in the air or taking-off
+                P[t, i, self.plane_range[-1]] = 0
 
     def constrain_function(self, P, L, verbose=False):
         
@@ -98,19 +100,9 @@ class QuantumPlanner:
 
 
         only_one_place = np.sum((np.sum(np.sum(10*L, axis=-1), axis=-1) - 10)**2)
-        #for r in self.passenger_range:
-        #    for t in self.time_range:
-        #        print(r, t, L[r,t])
         if verbose:
             print("only_one_place", only_one_place)
         
-        _to_sum = []
-        for r in self.passenger_range:
-            cond_dest_reached = _to_sum.append((np.sum(2*L[r, self.time_range[-1], self.passenger_destinations[r], :],  axis=-1)-2)**2 )
-        cond_dest_reached = np.sum(_to_sum)
-        if verbose:
-            print("was destination reached ",cond_dest_reached)
-            
         #P = np.expand_dims(P, 0)
 
         _to_sum = []
@@ -171,7 +163,7 @@ class QuantumPlanner:
             print("cond1-6", cond1 + cond2 + cond3 + cond4 + cond5 + cond6)
 
         conditions_on_LP = only_one_place + cond1 + cond2 + \
-                        cond3 + cond4 + cond5 + cond6 + cond_dest_reached
+                        cond3 + cond4 + cond5 + cond6
         return conditions_on_LP + conditions_on_P
 
     def generate_binary_variables(self):
@@ -257,7 +249,7 @@ class QuantumPlanner:
             positions_pass.append([])
             for t in self.time_range:
                 for state in [0] + self.airport_range + [self.n+1]:
-                    for plane in self.plane_range[:-1]:
+                    for plane in self.plane_range:
                         if L_res[r,t,state,plane]:
                             positions_pass[r].append((t,state, plane) )
                             
