@@ -2,6 +2,8 @@ import loading
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import datetime
+import quantum_planner
 
 def read_time(str):
     date, time = str.split('T')
@@ -133,6 +135,7 @@ class Scheduler:
         self.initial_plan = None
         self.current_time = None # All flights starting before this time are fixed
         self.pairings = [] #
+        self.disruptions = None
     
     def _create_transport_orders(self):
         """
@@ -150,11 +153,25 @@ class Scheduler:
         
         self.orders =  pd.merge(self.data.flights, _tmp, on="leg_id")[["start","from", "finish", "to", "total"]]
         
-    def apply_flight_disruption(self):
+    def apply_flight_disruption(self, disruptions):
+        self.disruptions = disruptions
+    
+    def reset_flight_disruption(self):
+        self.disruptions = None
+
+    def generate_plan_for_disruptions(self):
         pass
     
-    def find_errors(self):
-        pass
+    #def find_errors(self):
+    #    pass
+
+
+
+
+
+
+
+
 
 
 class Schedule:
