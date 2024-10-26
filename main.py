@@ -171,19 +171,7 @@ planner_simple = quantum_planner.QuantumPlanner(number_of_planes=number_of_plane
 
 
 
-P,L = planner_simple.generate_binary_variables()
-planner_simple.set_conditions(P, L)
-
-model = planner_simple.constrain_function(P,L).compile()
-
-qubo_matrix, variables = planner_simple.model_to_matrix(model)
-
-from gurobi_optimods.qubo import solve_qubo
-result = solve_qubo(qubo_matrix)
-
-print("Solution to the QUBO problem:", result)
-print("\noptimal")
-P_res_gurobi, L_res_gurobi = planner_simple.to_matrix_result( zip(variables, np.array(result.solution)))
+P_res_gurobi, L_res_gurobi = planner_simple.solve()
 print(planner_simple.constrain_function(P_res_gurobi, L_res_gurobi, verbose=True))
 planner_simple.show_result(P_res_gurobi, L_res_gurobi, figsize=(9,3))
 plt.show()

@@ -47,9 +47,12 @@ class QuantumPlanner:
             for i in [0]: # the plane is never in the air or taking-off
                 P[t, i, self.plane_range[-1]] = 0
 
+    def cost_function(self, P, L):
+        return np.sum(P[:,0,:])
+
     def constrain_function(self, P, L, verbose=False):
         
-        only_one_state = np.sum((np.sum(P, axis=1) - 1)**2)
+        only_one_state = np.sum((np.sum(P[:,:,:-1], axis=1) - 1)**2)
         if verbose:
             print("only_one,state",only_one_state)
         
@@ -59,7 +62,7 @@ class QuantumPlanner:
                 for i in self.airport_range:
                     for j in self.airport_range:
                         if i!=j and abs(t1-t2) < self.distances[i-1,j-1]:
-                            _to_sum.append(P[t1,i,:]*P[t2,j,:])
+                            _to_sum.append(P[t1, i, :-1]*P[t2, j, :-1])
         cond_P1 = np.sum(_to_sum)
         if verbose:
             print("cond_P1", cond_P1, end=" ")
@@ -218,7 +221,7 @@ class QuantumPlanner:
         return P_res, L_res
 
     def show_result(self, P_res, L_res, figsize):
-        fig, ax = plt.subplots(1,3, figsize=figsize)
+        fig, ax = plt.subplots(1,1+len(self.passenger_range), figsize=figsize)
         plane_line = [[] for p in self.plane_range[:-1]]
         positions=[]
         for plane in self.plane_range[:-1]:
@@ -248,8 +251,9 @@ class QuantumPlanner:
             ax[r+1].hlines(y=self.passenger_destinations[r], xmin=0, xmax=np.max(positions1[:,0]), color="black")
             for i, lines in enumerate(plane_line):
                 lines = np.array(sorted(lines, key = lambda x: x[0]))
-                ax[r+1].plot(lines[:,0], lines[:,1]+i/5, c=["red", "green"][i], alpha=0.5)
+                ax[r+1].plot(lines[:,0], lines[:,1]+i/10, c=["red", "green", "blue"][i], alpha=0.5)
             ax[r+1].set_title(f"passenger {r}")
+
 
 
     def solve(self, additional_conditions=None):
@@ -258,7 +262,7 @@ class QuantumPlanner:
         if additional_conditions is not None:
             additional_conditions(self, P, L)
 
-        model = self.constrain_function(P,L).compile()
+        model = (self.cost_function(P,L) + 20*self.constrain_function(P,L)).compile()
 
         qubo_matrix, variables =self.model_to_matrix(model)
 
@@ -266,9 +270,16 @@ class QuantumPlanner:
         result = solve_qubo(qubo_matrix)
 
         print("Solution to the QUBO problem:", result)
-        print("\noptimal")
         P_res_gurobi, L_res_gurobi = self.to_matrix_result( zip(variables, np.array(result.solution)),
                                                            additional_conditions=additional_conditions)
+        final_value = self.constrain_function(P_res_gurobi, L_res_gurobi) 
+        optimal_value = -len(self.passenger_range)*(2*len(self.time_range)-1)
+        if final_value == optimal_value:
+            print("SOLUTION IS CORRECT")
+        if final_value < optimal_value:
+            print("ALGORITHM WAS BAD")
+        if final_value > optimal_value:
+            print("CORRECT SOLUTION WAS NOT FOUND")
         return P_res_gurobi, L_res_gurobi
 
 if __name__ == "__main__":
