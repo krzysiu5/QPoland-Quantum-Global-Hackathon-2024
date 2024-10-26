@@ -50,7 +50,7 @@ class QuantumPlanner:
     def cost_function(self, P, L):
         return np.sum(P[:,0,:])
 
-    def constrain_function(self, P, L, verbose=False):
+    def constrain_function(self, P, L, dummy_vars, verbose=False):
         
         only_one_state = np.sum((np.sum(P[:,:,:-1], axis=1) - 1)**2)
         if verbose:
@@ -146,8 +146,10 @@ class QuantumPlanner:
         if verbose:
             print("cond1-6", cond1 + cond2 + cond3 + cond4 + cond6)
 
+        only_one_passenger = np.sum((dummy_vars + np.sum(np.sum(L[:,:,:,:-1], axis=0), axis=1) - 1 )**2)
+
         conditions_on_LP = only_one_place + cond1 + cond2 + \
-                        cond3 + cond4 + cond6
+                        cond3 + cond4 + cond6 + only_one_passenger
         return conditions_on_LP + conditions_on_P
 
     def generate_binary_variables(self):
@@ -173,8 +175,16 @@ class QuantumPlanner:
                 cur1.append(cur2)
             L.append(cur1)
         L = np.array(L)
-        print(P.shape, L.shape)
-        return P, L
+        cur1 = []
+        for t in self.time_range:
+            cur2 = []
+            for i in self.plane_range[:-1]:
+                cur2.append(Binary(f"Dummy_{t},P{i}"))
+            cur1.append(cur2)
+        dummy_vars = np.array(cur1)
+        
+        print(P.shape, L.shape, dummy_vars.shape)
+        return P, L, dummy_vars
 
     def model_to_matrix(self, model):
         qubo_dict, offset = model.to_qubo()
@@ -204,6 +214,7 @@ class QuantumPlanner:
         P_res = np.zeros([len(self.time_range),
                     len(self.airport_range)+2,
                     len(self.plane_range)])
+        dummy_vars_res = np.zeros([len(self.time_range), len(self.plane_range)-1])
 
         self.set_conditions(P_res, L_res)
         if additional_conditions is not None:
@@ -218,7 +229,12 @@ class QuantumPlanner:
                 passenger, time, state, plane = re.match("L_C(\d*),t(\d*),A(\d*),B(\d*)", key).groups()
                 passenger, time, state, plane = int(passenger), int(time), int(state), int(plane)
                 L_res[passenger, time, state, plane] = val
-        return P_res, L_res
+            if key[0] == "D":
+                time, plane = re.match("Dummy_(\d*),P(\d*)", key).groups()
+                time, plane = int(time), int(plane)
+                dummy_vars_res[time, plane]
+
+        return P_res, L_res, dummy_vars_res
 
     def show_result(self, P_res, L_res, figsize):
         fig, ax = plt.subplots(1,1+len(self.passenger_range), figsize=figsize)
@@ -257,12 +273,12 @@ class QuantumPlanner:
 
 
     def solve(self, additional_conditions=None):
-        P,L = self.generate_binary_variables()
+        P,L, dummy_vars = self.generate_binary_variables()
         self.set_conditions(P, L)
         if additional_conditions is not None:
             additional_conditions(self, P, L)
 
-        model = (self.cost_function(P,L) + 20*self.constrain_function(P,L)).compile()
+        model = (self.cost_function(P,L) + 20*self.constrain_function(P,L,dummy_vars)).compile()
 
         qubo_matrix, variables =self.model_to_matrix(model)
 
@@ -270,9 +286,10 @@ class QuantumPlanner:
         result = solve_qubo(qubo_matrix)
 
         print("Solution to the QUBO problem:", result)
-        P_res_gurobi, L_res_gurobi = self.to_matrix_result( zip(variables, np.array(result.solution)),
+        P_res_gurobi, L_res_gurobi, dummy_vars_gurobi = self.to_matrix_result( zip(variables, np.array(result.solution)),
                                                            additional_conditions=additional_conditions)
-        final_value = self.constrain_function(P_res_gurobi, L_res_gurobi) 
+        final_value = self.constrain_function(P_res_gurobi, L_res_gurobi, dummy_vars_gurobi) 
+        print(final_value)
         optimal_value = -len(self.passenger_range)*(2*len(self.time_range)-1)
         if final_value == optimal_value:
             print("SOLUTION IS CORRECT")
@@ -280,7 +297,7 @@ class QuantumPlanner:
             print("ALGORITHM WAS BAD")
         if final_value > optimal_value:
             print("CORRECT SOLUTION WAS NOT FOUND")
-        return P_res_gurobi, L_res_gurobi
+        return P_res_gurobi, L_res_gurobi, dummy_vars_gurobi
 
 if __name__ == "__main__":
     planner = QuantumPlanner(number_of_planes=2, number_of_airport=3, number_of_passengers=2, 
@@ -299,7 +316,7 @@ if __name__ == "__main__":
         #    for i in [0, planner.n+1]: # the plane is never in the air or taking-off
         #        P[t, i, planner.plane_range[-1]] = 0
 
-    P_res_gurobi, L_res_gurobi = planner.solve(additional_conditions=additional_conditions)
-    print(planner.constrain_function(P_res_gurobi, L_res_gurobi, verbose=True))
+    P_res_gurobi, L_res_gurobi, dummy_vars_gurobi = planner.solve(additional_conditions=additional_conditions)
+    print(planner.constrain_function(P_res_gurobi, L_res_gurobi, dummy_vars_gurobi, verbose=True))
     planner.show_result(P_res_gurobi, L_res_gurobi, figsize=(9,3))
     plt.show()
