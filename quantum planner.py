@@ -17,20 +17,29 @@ passenger_destinations = np.array([1,2])
 passenger_start = np.array([2,1])
 airplane_start = np.array([2,1])
 
-###!!!! Można przypisać wartości, które moją być ustalone bezpośrednio !!!
 def set_conditions(P, L):
+    #At the start the only possition of the passenger is at start airport (isn't at the others)
     for r in passenger_range:
-        L[r, time_range[0], passenger_start[r], r] = 1
+        for i in airport_range:
+            if i != passenger_start[r]:
+                L[r, time_range[0], i, :] = 0
+
+    #At the start the only possition of the airplane is at start airport
     for p in plane_range[:-1]:
-        P[time_range[0], airplane_start[p], p] = 1
-    #Put a plane that stayes at all airports at the same time
+        for i in airport_range:
+            P[time_range[0], i, p] = (airplane_start[p] == i)
+    
+    #At the end the only available possition of the passenger is in airport
+    for r in passenger_range: 
+        for i in airport_range:
+            for p in plane_range:
+                if i != passenger_destinations[r]:
+                    L[r, time_range[-1], i, p] = 0
+
+    #Put a plane that stays at all airports at the same time
     for t in time_range:
         for i in airport_range:
             P[t, i, plane_range[-1]] = 1
-    #for r in passenger_range:
-    #    for t in time_range:
-    #        for i in airport_range:
-    #            L[r,t,i,j] = 0
 
 def constrain_function(P, L, verbose=False):
     
