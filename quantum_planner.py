@@ -271,23 +271,24 @@ class QuantumPlanner:
                                                            additional_conditions=additional_conditions)
         return P_res_gurobi, L_res_gurobi
 
-planner = QuantumPlanner(number_of_planes=2, number_of_airport=3, number_of_passengers=2, 
-                         number_of_time_periods=6,
-                         distances= np.array([[0,2,2,2],[2,0,2,2],[2,2,0,2],[2,2,2,0]]),
-                         passenger_destinations= np.array([1,2]),
-                         passenger_start=np.array([2,1]),
-                         airplane_start=np.array([3,3]))
+if __name__ == "__main__":
+    planner = QuantumPlanner(number_of_planes=2, number_of_airport=3, number_of_passengers=2, 
+                            number_of_time_periods=6,
+                            distances= np.array([[0,2,2,2],[2,0,2,2],[2,2,0,2],[2,2,2,0]]),
+                            passenger_destinations= np.array([1,2]),
+                            passenger_start=np.array([2,1]),
+                            airplane_start=np.array([3,3]))
 
-def additional_conditions(planner, P, L):
-    pass
-    #PRZYKŁAD JAK MOŻNA STOSOWAĆ
-    #for t in planner.time_range:
-    #    for i in planner.airport_range:
-    #        P[t, i, planner.plane_range[-1]] = 1
-    #    for i in [0, planner.n+1]: # the plane is never in the air or taking-off
-    #        P[t, i, planner.plane_range[-1]] = 0
+    def additional_conditions(planner, P, L):
+        pass
+        #PRZYKŁAD JAK MOŻNA STOSOWAĆ
+        #for t in planner.time_range:
+        #    for i in planner.airport_range:
+        #        P[t, i, planner.plane_range[-1]] = 1
+        #    for i in [0, planner.n+1]: # the plane is never in the air or taking-off
+        #        P[t, i, planner.plane_range[-1]] = 0
 
-P_res_gurobi, L_res_gurobi = planner.solve(additional_conditions=additional_conditions)
-print(planner.constrain_function(P_res_gurobi, L_res_gurobi, verbose=True))
-planner.show_result(P_res_gurobi, L_res_gurobi, figsize=(9,3))
-plt.show()
+    P_res_gurobi, L_res_gurobi = planner.solve(additional_conditions=additional_conditions)
+    print(planner.constrain_function(P_res_gurobi, L_res_gurobi, verbose=True))
+    planner.show_result(P_res_gurobi, L_res_gurobi, figsize=(9,3))
+    plt.show()
