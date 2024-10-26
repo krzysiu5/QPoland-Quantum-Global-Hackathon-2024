@@ -98,7 +98,7 @@ def constrain_function(P, L, verbose=False):
 
     _to_sum = []
     for r in passenger_range:
-        for i in set([0,n+1]) | set(airport_range) - set([passenger_destinations[r]]):
+        for i in set([0,n+1]) | set(airport_range):# - set([passenger_destinations[r]]):
             _to_sum.append(np.sum(-L[r,:,i,:]*P[:,i,:]))
     cond1 = np.sum(_to_sum)
     if verbose:
@@ -245,12 +245,13 @@ def show_result(P_res, L_res, figsize):
                         positions_pass[r].append((t,state, plane) )
                         
     positions = np.array(sorted(positions, key = lambda x: x[0]))
-    ax[0].scatter(positions[:,0], positions[:,1]+positions[:,2]/5, c=positions[:,2], alpha=0.5)
+    ax[0].scatter(positions[:,0], positions[:,1]+positions[:,2]/5, c=positions[:,2],
+                  vmin=0, vmax=len(plane_range)-1, alpha=0.5)
     ax[0].set_title("plane positions")
     for r in passenger_range:
         positions1 = np.array(positions_pass[r])
         ax[r+1].scatter(positions1[:,0], positions1[:,1]+positions1[:,2]/5, c=positions1[:,2],
-                        vmin=0, vmax=len(plane_range[:-1])-1, alpha=0.5)
+                        vmin=0, vmax=len(plane_range)-1, alpha=0.5)
         ax[r+1].hlines(y=passenger_destinations[r], xmin=0, xmax=np.max(positions1[:,0]), color="black")
         for i, lines in enumerate(plane_line):
             lines = np.array(sorted(lines, key = lambda x: x[0]))
