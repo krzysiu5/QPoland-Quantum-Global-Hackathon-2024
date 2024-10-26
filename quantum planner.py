@@ -198,7 +198,7 @@ class QuantumPlanner:
         return qubo_matrix, variables
 
 
-    def to_matrix_result(self, data):
+    def to_matrix_result(self, data, additional_conditions=None):
         L_res = np.zeros([len(self.passenger_range), 
                     len(self.time_range),
                     len(self.airport_range)+2,
@@ -208,6 +208,8 @@ class QuantumPlanner:
                     len(self.plane_range)])
 
         self.set_conditions(P_res, L_res)
+        if additional_conditions is not None:
+            additional_conditions(self, P_res, L_res)
 
         for key, val in  data:
             if key[0] == "P":
@@ -255,6 +257,25 @@ class QuantumPlanner:
             ax[r+1].set_title(f"passenger {r}")
 
 
+    def solve(self, additional_conditions=None):
+        P,L = self.generate_binary_variables()
+        self.set_conditions(P, L)
+        if additional_conditions is not None:
+            additional_conditions(self, P, L)
+
+        model = self.constrain_function(P,L).compile()
+
+        qubo_matrix, variables =self.model_to_matrix(model)
+
+        from gurobi_optimods.qubo import solve_qubo
+        result = solve_qubo(qubo_matrix)
+
+        print("Solution to the QUBO problem:", result)
+        print("\noptimal")
+        P_res_gurobi, L_res_gurobi = self.to_matrix_result( zip(variables, np.array(result.solution)),
+                                                           additional_conditions=additional_conditions)
+        return P_res_gurobi, L_res_gurobi
+
 planner = QuantumPlanner(number_of_planes=2, number_of_airport=2, number_of_passengers=2, 
                          number_of_time_periods=5,
                          distances= np.array([[0,4,4],[4,0,4],[4,4,0]]),
@@ -262,19 +283,16 @@ planner = QuantumPlanner(number_of_planes=2, number_of_airport=2, number_of_pass
                          passenger_start=np.array([2,1]),
                          airplane_start=np.array([2,1]))
 
-P,L = planner.generate_binary_variables()
-planner.set_conditions(P, L)
+def additional_conditions(planner, P, L):
+    pass
+    #PRZYKŁAD JAK MOŻNA STOSOWAĆ
+    #for t in planner.time_range:
+    #    for i in planner.airport_range:
+    #        P[t, i, planner.plane_range[-1]] = 1
+    #    for i in [0, planner.n+1]: # the plane is never in the air or taking-off
+    #        P[t, i, planner.plane_range[-1]] = 0
 
-model = planner.constrain_function(P,L).compile()
-
-qubo_matrix, variables = planner.model_to_matrix(model)
-
-from gurobi_optimods.qubo import solve_qubo
-result = solve_qubo(qubo_matrix)
-
-print("Solution to the QUBO problem:", result)
-print("\noptimal")
-P_res_gurobi, L_res_gurobi = planner.to_matrix_result( zip(variables, np.array(result.solution)))
+P_res_gurobi, L_res_gurobi = planner.solve(additional_conditions=additional_conditions)
 print(planner.constrain_function(P_res_gurobi, L_res_gurobi, verbose=True))
 planner.show_result(P_res_gurobi, L_res_gurobi, figsize=(9,3))
 plt.show()
