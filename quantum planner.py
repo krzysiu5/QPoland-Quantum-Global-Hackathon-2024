@@ -4,17 +4,6 @@ import re
 import matplotlib.pyplot as plt
 import gurobi_optimods as go
 
-#n=2
-#plane_range = list(range(2+1))
-#airport_range = list(range(1,self.n+1))
-#passenger_range = list(range(2))
-#time_range = list(range(5))
-
-#distances = np.array([[0,4,4],[4,0,4],[4,4,0]])
-
-#passenger_destinations = np.array([1,2])
-#passenger_start = np.array([2,1])
-#airplane_start = np.array([2,1])
 
 class QuantumPlanner:
     def __init__(self, number_of_planes, number_of_airport, number_of_passengers, number_of_time_periods,
@@ -25,10 +14,10 @@ class QuantumPlanner:
         self.passenger_range = list(range(number_of_passengers))
         self.time_range = list(range(number_of_time_periods))
 
-        self.distances = distances #np.array([[0,4,4],[4,0,4],[4,4,0]])
+        self.distances = distances 
 
-        self.passenger_destinations = passenger_destinations#np.array([1,2])
-        self.passenger_start = passenger_start#np.array([2,1])
+        self.passenger_destinations = passenger_destinations
+        self.passenger_start = passenger_start
         self.airplane_start = airplane_start
 
     def set_conditions(self, P, L):
@@ -103,11 +92,9 @@ class QuantumPlanner:
         if verbose:
             print("only_one_place", only_one_place)
         
-        #P = np.expand_dims(P, 0)
-
         _to_sum = []
         for r in self.passenger_range:
-            for i in set([0,self.n+1]) | set(self.airport_range):# - set([self.passenger_destinations[r]]):
+            for i in set([0,self.n+1]) | set(self.airport_range):
                 _to_sum.append(np.sum(-L[r,:,i,:]*P[:,i,:]))
         cond1 = np.sum(_to_sum)
         if verbose:
@@ -268,16 +255,6 @@ class QuantumPlanner:
             ax[r+1].set_title(f"passenger {r}")
 
 
-#plane_range = list(range(2+1))
-#airport_range = list(range(1,self.n+1))
-#passenger_range = list(range(2))
-#time_range = list(range(5))
-
-#distances = np.array([[0,4,4],[4,0,4],[4,4,0]])
-#distances
-
-#passenger_destinations = np.array([1,2])
-#passenger_start = np.array([2,1])
 planner = QuantumPlanner(number_of_planes=2, number_of_airport=2, number_of_passengers=2, 
                          number_of_time_periods=5,
                          distances= np.array([[0,4,4],[4,0,4],[4,4,0]]),
@@ -285,8 +262,6 @@ planner = QuantumPlanner(number_of_planes=2, number_of_airport=2, number_of_pass
                          passenger_start=np.array([2,1]),
                          airplane_start=np.array([2,1]))
 
-    #def __init__(self, number_of_planes, number_of_airport, number_of_passengers, number_of_time_periods,
-    #                  distances, passenger_destinations, passenger_start, airplane_start):
 P,L = planner.generate_binary_variables()
 planner.set_conditions(P, L)
 
