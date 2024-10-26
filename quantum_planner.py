@@ -48,7 +48,10 @@ class QuantumPlanner:
                 P[t, i, self.plane_range[-1]] = 0
 
     def cost_function(self, P, L):
-        return np.sum(P[:,0,:])
+        _to_sum = []
+        for r in self.passenger_range:
+                _to_sum.append(np.sum(-L[r,:, self.passenger_destinations[r], :]))
+        return np.sum(_to_sum) + np.sum(P[:,0,:])
 
     def constrain_function(self, P, L, dummy_vars, verbose=False):
         
@@ -146,7 +149,9 @@ class QuantumPlanner:
         if verbose:
             print("cond1-6", cond1 + cond2 + cond3 + cond4 + cond6)
 
-        only_one_passenger = np.sum((dummy_vars + np.sum(np.sum(L[:,:,:,:-1], axis=0), axis=1) - 1 )**2)
+        only_one_passenger = np.sum((dummy_vars + np.sum(np.sum(L[:,:,:,:-1], axis=0), axis=1)-1)**2)
+        if verbose:
+            print("only one passenger", only_one_passenger)
 
         conditions_on_LP = only_one_place + cond1 + cond2 + \
                         cond3 + cond4 + cond6 + only_one_passenger
@@ -214,7 +219,7 @@ class QuantumPlanner:
         P_res = np.zeros([len(self.time_range),
                     len(self.airport_range)+2,
                     len(self.plane_range)])
-        dummy_vars_res = np.zeros([len(self.time_range), len(self.plane_range)-1])
+        dummy_vars_res = 5*np.ones([len(self.time_range), len(self.plane_range)-1])
 
         self.set_conditions(P_res, L_res)
         if additional_conditions is not None:
@@ -232,7 +237,7 @@ class QuantumPlanner:
             if key[0] == "D":
                 time, plane = re.match("Dummy_(\d*),P(\d*)", key).groups()
                 time, plane = int(time), int(plane)
-                dummy_vars_res[time, plane]
+                dummy_vars_res[time, plane] = val
 
         return P_res, L_res, dummy_vars_res
 
@@ -300,12 +305,19 @@ class QuantumPlanner:
         return P_res_gurobi, L_res_gurobi, dummy_vars_gurobi
 
 if __name__ == "__main__":
-    planner = QuantumPlanner(number_of_planes=2, number_of_airport=3, number_of_passengers=2, 
-                            number_of_time_periods=6,
-                            distances= np.array([[0,2,2,2],[2,0,2,2],[2,2,0,2],[2,2,2,0]]),
-                            passenger_destinations= np.array([1,2]),
-                            passenger_start=np.array([2,1]),
-                            airplane_start=np.array([3,3]))
+    #planner = QuantumPlanner(number_of_planes=2, number_of_airport=3, number_of_passengers=2, 
+    #                        number_of_time_periods=6,
+    #                        distances= np.array([[0,2,2,2],[2,0,2,2],[2,2,0,2],[2,2,2,0]]),
+    #                        passenger_destinations= np.array([1,2]),
+    #                        passenger_start=np.array([2,1]),
+    #                        airplane_start=np.array([3,3]))
+
+    planner = QuantumPlanner(number_of_planes=2, number_of_airport=3, number_of_passengers=3, 
+                        number_of_time_periods=5,
+                        distances= np.array([[0,2,2,2],[2,0,2,2],[2,2,0,2],[2,2,2,0]]),
+                        passenger_destinations= np.array([1,2,1]),
+                        passenger_start=np.array([2,1,3]),
+                        airplane_start=np.array([3,3]))
 
     def additional_conditions(planner, P, L):
         pass
