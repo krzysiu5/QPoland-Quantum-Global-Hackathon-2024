@@ -5,11 +5,27 @@ import matplotlib.pyplot as plt
 import datetime
 import quantum_planner
 
+def read_time2(str):
+    date, time = str.split(' ')
+    year, month, day = date.split('-')
+    hour, minute, seconds = time.split(':')
+    return datetime.datetime(int(year), int(month), int(day), int(hour), int(minute), int(seconds))
+
 def read_time(str):
     date, time = str.split('T')
     year, month, day = date.split('-')
     hour, minute = time.split(':')
     return datetime.datetime(int(year), int(month), int(day), int(hour), int(minute))
+
+def read_time3(str):
+    date, time = str.split('T')
+    year, month, day = date.split('-')
+    hour, minute, second = time.split(':')
+    seconds, miliseconds = second.split('.')
+    return datetime.datetime(int(year), int(month), int(day), int(hour), int(minute), int(seconds))
+
+def read_moment_time(date_time):
+    return 2*date_time.hour + int(date_time.minute/30)
 
 class Flight:
     def __init__(self, full_data : loading.Data, passenger_count):
@@ -132,10 +148,12 @@ class Scheduler:
     def __init__(self, data):
         self.data = data
         self._create_transport_orders()
+        self.orders = self.orders.sort_values("start")
         self.initial_plan = None
         self.current_time = None # All flights starting before this time are fixed
         self.pairings = [] #
         self.disruptions = None
+        self.code = {'TLS': 1, 'CDG': 2, 'NCE': 3, 'ORY': 4}
     
     def _create_transport_orders(self):
         """
@@ -161,6 +179,27 @@ class Scheduler:
 
     def generate_plan_for_disruptions(self):
         pass
+
+    def change_harmonogram(self, delta:int):
+        orders_new = self.orders.copy()
+        orders_new.insert(1, "start_number", [read_moment_time(read_time3(str(orders_new["start"].values[i]))) for i in range(len(orders_new))])
+
+        orders_new.insert(3, 'from_number', [self.code[self.orders['from'].values[i]] for i in range(len(orders_new))])
+        
+        orders_new.insert(5, "finish_number", [read_moment_time(read_time3(str(orders_new["finish"].values[i]))) for i in range(len(orders_new))])
+        orders_new.insert(6, "finish_affected", orders_new["finish"])
+
+        row = orders_new.loc[orders_new.index[0],:]
+        value = read_time2(str(pd.DataFrame(row).transpose()["finish_affected"][0]))
+        value = pd.Timestamp(value + datetime.timedelta(minutes = int(delta) + 30))
+        row["finish_affected"] = value
+        orders_new.loc[orders_new.index[0],:] = row
+
+        orders_new.insert(7, "finish_affected_number", [read_moment_time(read_time3(str(orders_new["finish_affected"].values[i]))) for i in range(len(orders_new))])
+
+        orders_new.insert(9, 'to_number', [self.code[self.orders['to'].values[i]] for i in range(len(orders_new))])
+        
+        return orders_new
     
     #def find_errors(self):
     #    pass
