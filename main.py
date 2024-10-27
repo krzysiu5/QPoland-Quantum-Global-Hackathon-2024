@@ -170,7 +170,7 @@ planner_simple = quantum_planner.QuantumPlanner(number_of_planes=number_of_plane
                                                     passenger_start=passenger_start,airplane_start=airplane_start)
 
 
-P_res_gurobi, L_res_gurobi = planner_simple.solve()
-print(planner_simple.constrain_function(P_res_gurobi, L_res_gurobi, verbose=True))
+P_res_gurobi, L_res_gurobi, dummy_var_res = planner_simple.solve()
+print(planner_simple.constrain_function(P_res_gurobi, L_res_gurobi, dummy_var_res, verbose=True))
 planner_simple.show_result(P_res_gurobi, L_res_gurobi, figsize=(9,3))
 plt.show()
