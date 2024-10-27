@@ -6,6 +6,8 @@ quantum_planner.py - implementation of a basic planner that for given airports a
 passengers from their starting positions to destinations. You can also specify starting positions of the airplanes.
 The planner represents the problem in the form of QUBO and solves it using gurobi library.
 
+main.py - runs a quantum planner on the small section of simple data
+
 Link to the video: https://drive.google.com/drive/folders/18c3r9r1ZLlFpW47WElX-2azrb7pO9raH?usp=sharing
 
 ## Requirements
